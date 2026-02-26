@@ -5,38 +5,59 @@ const { WebcastPushConnection } = require("tiktok-live-connector");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*"
+  }
+});
 
 app.use(express.static("public"));
 
-server.listen(3000, () => {
-  console.log("Servidor rodando em http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log("Servidor rodando na porta", PORT);
 });
 
-const tiktokUsername = "ellinderoo"; // SEM @
-
-const tiktokLiveConnection = new WebcastPushConnection(tiktokUsername);
-
-tiktokLiveConnection.connect().then(state => {
-  console.log("Conectado à live!");
-}).catch(err => {
-  console.error("Erro ao conectar:", err);
-});
+const tiktokUsername = "ellinderoo";
 
 let ranking = {};
+let tiktokLiveConnection;
 
-tiktokLiveConnection.on("like", data => {
-  console.log("LIKE RECEBIDO:", data.likeCount);
+function startConnection() {
+  console.log("Tentando conectar na live...");
 
-  if(!ranking[data.uniqueId]){
-    ranking[data.uniqueId] = {
-      name: data.nickname,
-      photo: data.profilePictureUrl,
-      likes: 0
-    };
-  }
+  tiktokLiveConnection = new WebcastPushConnection(tiktokUsername, {
+    enableExtendedGiftInfo: true
+  });
 
-  ranking[data.uniqueId].likes += data.likeCount;
+  tiktokLiveConnection.connect()
+    .then(() => {
+      console.log("Conectado à live!");
+    })
+    .catch(err => {
+      console.error("Erro ao conectar:", err);
+      setTimeout(startConnection, 5000);
+    });
 
-  io.emit("like", ranking[data.uniqueId]);
-});
+  tiktokLiveConnection.on("like", data => {
+    if (!ranking[data.uniqueId]) {
+      ranking[data.uniqueId] = {
+        name: data.nickname,
+        photo: data.profilePictureUrl,
+        likes: 0
+      };
+    }
+
+    ranking[data.uniqueId].likes += data.likeCount;
+
+    io.emit("like", ranking[data.uniqueId]);
+  });
+
+  tiktokLiveConnection.on("disconnected", () => {
+    console.log("Desconectado. Tentando reconectar...");
+    setTimeout(startConnection, 5000);
+  });
+}
+
+startConnection();
