@@ -3,20 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <title>Top 5 Likes</title>
+
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
-body{
+html, body{
   margin:0;
+  padding:0;
   background:transparent;
-  font-family:Arial, sans-serif;
+  font-family: Arial, sans-serif;
 }
 
 #grid{
   position:absolute;
-  right:20px;
-  top:20px;
-  width:320px;
+  right:25px;
+  top:25px;
+  width:330px;
   display:flex;
   flex-direction:column;
   gap:12px;
@@ -28,24 +30,23 @@ body{
   gap:12px;
   padding:12px;
   border-radius:14px;
-  background: rgba(0,0,0,0.65);
-  backdrop-filter: blur(10px);
+  background: rgba(0,0,0,0.70);
+  backdrop-filter: blur(12px);
   color:white;
-  transition:all 0.4s ease;
-  transform:translateX(40px);
-  opacity:0;
+  transition: all 0.35s ease;
+  animation: fadeIn 0.4s ease;
 }
 
-.card.show{
-  transform:translateX(0);
-  opacity:1;
+@keyframes fadeIn{
+  from { opacity:0; transform: translateX(30px); }
+  to { opacity:1; transform: translateX(0); }
 }
 
 .card img{
-  width:50px;
-  height:50px;
+  width:52px;
+  height:52px;
   border-radius:50%;
-  border:2px solid white;
+  border:2px solid rgba(255,255,255,0.3);
 }
 
 .position{
@@ -57,10 +58,11 @@ body{
 .gold{
   background:linear-gradient(90deg,#FFD700,#ffb700);
   color:black;
+  box-shadow:0 0 15px rgba(255,215,0,0.6);
 }
 
 .silver{
-  background:linear-gradient(90deg,#C0C0C0,#a8a8a8);
+  background:linear-gradient(90deg,#C0C0C0,#9e9e9e);
   color:black;
 }
 
@@ -86,55 +88,60 @@ body{
 <div id="grid"></div>
 
 <script>
-const socket = io();
+const socket = io({
+  transports: ["websocket"],
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 2000
+});
+
 let ranking = {};
 
+socket.on("connect", () => {
+  console.log("Conectado ao servidor");
+});
+
+socket.on("disconnect", () => {
+  console.log("Desconectado. Tentando reconectar...");
+});
+
 socket.on("like", (data) => {
-
-    ranking[data.name] = {
-        name: data.name,
-        photo: data.photo,
-        likes: data.likes
-    };
-
-    render();
+  ranking[data.name] = data;
+  render();
 });
 
 function render(){
-    const container = document.getElementById("grid");
-    container.innerHTML = "";
+  const container = document.getElementById("grid");
 
-    let sorted = Object.values(ranking)
-        .sort((a,b)=> b.likes - a.likes)
-        .slice(0,5);
+  const sorted = Object.values(ranking)
+    .sort((a,b)=> b.likes - a.likes)
+    .slice(0,5);
 
-    sorted.forEach((user,index)=>{
+  container.innerHTML = "";
 
-        let medalClass = "";
-        let medalIcon = index+1;
+  sorted.forEach((user,index)=>{
 
-        if(index === 0){ medalClass="gold"; medalIcon="🥇"; }
-        if(index === 1){ medalClass="silver"; medalIcon="🥈"; }
-        if(index === 2){ medalClass="bronze"; medalIcon="🥉"; }
+    let medalClass = "";
+    let medalIcon = index+1;
 
-        const card = document.createElement("div");
-        card.className = "card " + medalClass;
+    if(index === 0){ medalClass="gold"; medalIcon="🥇"; }
+    if(index === 1){ medalClass="silver"; medalIcon="🥈"; }
+    if(index === 2){ medalClass="bronze"; medalIcon="🥉"; }
 
-        card.innerHTML = `
-            <div class="position">${medalIcon}</div>
-            <img src="${user.photo}">
-            <div>
-                <div class="name">${user.name}</div>
-                <div class="likes">${user.likes} ❤️</div>
-            </div>
-        `;
+    const card = document.createElement("div");
+    card.className = "card " + medalClass;
 
-        container.appendChild(card);
+    card.innerHTML = `
+      <div class="position">${medalIcon}</div>
+      <img src="${user.photo}" referrerpolicy="no-referrer">
+      <div>
+        <div class="name">${user.name}</div>
+        <div class="likes">${user.likes} ❤️</div>
+      </div>
+    `;
 
-        setTimeout(()=>{
-            card.classList.add("show");
-        },50);
-    });
+    container.appendChild(card);
+  });
 }
 </script>
 
