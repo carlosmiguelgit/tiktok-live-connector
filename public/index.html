@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Top 5 Likes</title>
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+body{
+  margin:0;
+  background:transparent;
+  font-family:Arial, sans-serif;
+}
+
+#grid{
+  position:absolute;
+  right:20px;
+  top:20px;
+  width:320px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  border-radius:14px;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(10px);
+  color:white;
+  transition:all 0.4s ease;
+  transform:translateX(40px);
+  opacity:0;
+}
+
+.card.show{
+  transform:translateX(0);
+  opacity:1;
+}
+
+.card img{
+  width:50px;
+  height:50px;
+  border-radius:50%;
+  border:2px solid white;
+}
+
+.position{
+  font-size:22px;
+  width:35px;
+  text-align:center;
+}
+
+.gold{
+  background:linear-gradient(90deg,#FFD700,#ffb700);
+  color:black;
+}
+
+.silver{
+  background:linear-gradient(90deg,#C0C0C0,#a8a8a8);
+  color:black;
+}
+
+.bronze{
+  background:linear-gradient(90deg,#CD7F32,#a05a2c);
+  color:white;
+}
+
+.name{
+  font-weight:bold;
+  font-size:15px;
+}
+
+.likes{
+  font-size:14px;
+  opacity:0.9;
+}
+</style>
+</head>
+
+<body>
+
+<div id="grid"></div>
+
+<script>
+const socket = io();
+let ranking = {};
+
+socket.on("like", (data) => {
+
+    ranking[data.name] = {
+        name: data.name,
+        photo: data.photo,
+        likes: data.likes
+    };
+
+    render();
+});
+
+function render(){
+    const container = document.getElementById("grid");
+    container.innerHTML = "";
+
+    let sorted = Object.values(ranking)
+        .sort((a,b)=> b.likes - a.likes)
+        .slice(0,5);
+
+    sorted.forEach((user,index)=>{
+
+        let medalClass = "";
+        let medalIcon = index+1;
+
+        if(index === 0){ medalClass="gold"; medalIcon="🥇"; }
+        if(index === 1){ medalClass="silver"; medalIcon="🥈"; }
+        if(index === 2){ medalClass="bronze"; medalIcon="🥉"; }
+
+        const card = document.createElement("div");
+        card.className = "card " + medalClass;
+
+        card.innerHTML = `
+            <div class="position">${medalIcon}</div>
+            <img src="${user.photo}">
+            <div>
+                <div class="name">${user.name}</div>
+                <div class="likes">${user.likes} ❤️</div>
+            </div>
+        `;
+
+        container.appendChild(card);
+
+        setTimeout(()=>{
+            card.classList.add("show");
+        },50);
+    });
+}
+</script>
+
+</body>
+</html>
